@@ -5,20 +5,20 @@ import { authService } from '../../services/authService';
 import { ApiErrorResponse } from '../../types/auth';
 
 export default function LoginScreen({ navigation, setOnboarded }: any) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { setToken } = useAuth();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+    if (!username || !password) {
+      Alert.alert('Error', 'Please enter username and password');
       return;
     }
 
     setLoading(true);
     try {
-      const data = await authService.login({ email, password });
+      const data = await authService.login({ username, password });
       
       setToken(data.access_token);
       
@@ -43,8 +43,8 @@ const errorData = e.response?.data as ApiErrorResponse;
       <TextInput 
         placeholder="Email" 
         style={styles.input} 
-        value={email} 
-        onChangeText={setEmail}
+        value={username} 
+        onChangeText={setUsername}
         autoCapitalize="none"
         keyboardType="email-address"
         editable={!loading}

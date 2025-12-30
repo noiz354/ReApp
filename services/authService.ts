@@ -4,7 +4,7 @@ import { LoginDto, RegisterDto, AuthResponse } from '../types/auth';
 
 export const authService = {
   login: async (credentials: LoginDto): Promise<AuthResponse> => {
-    const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials);
+    const { data } = await apiClient.post<AuthResponse>('/auth/token/', credentials);
     await Keychain.setGenericPassword('session', JSON.stringify(data));
     return data;
   },

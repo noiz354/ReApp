@@ -9,7 +9,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { navigationRef } from './services/navigationRef';
 
 import { initNotifications } from './native/notifications';
-import { pullAndScheduleNotifications } from './services/backgroundSync';
+import { pullAndScheduleNotifications } from './services/notificationSync';
 
 export default function App() {
   useEffect(() => {

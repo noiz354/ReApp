@@ -14,7 +14,7 @@ export interface User {
  * Data required for the Login request
  */
 export interface LoginDto {
-  email: string;
+  username: string;
   password: string;
 }
 

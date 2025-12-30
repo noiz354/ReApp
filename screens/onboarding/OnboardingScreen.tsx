@@ -6,7 +6,11 @@ import { Button, Text } from 'react-native-paper';
 import { onboardingAnim } from '../../utils/animations';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-export default function OnboardingScreen({ navigation }: any) {
+interface OnboardingProps {
+  onFinish: () => void; // This matches the handleSetOnboarded function
+}
+
+export default function OnboardingScreen({ navigation }: OnboardingProps) {
   return (
     <View style={styles.container}>
       <LottieView
