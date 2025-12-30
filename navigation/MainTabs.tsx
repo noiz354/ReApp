@@ -2,11 +2,11 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import HomeScreen from '../screens/home/HomeScreen';
+import HomeStack from './HomeStack';
 import SearchScreen from '../screens/search/SearchScreen';
 import VideoScreen from '../screens/video/VideoScreen';
 import OrdersScreen from '../screens/orders/OrdersScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import ProfileStack from './ProfileStack';
 
 const Tab = createBottomTabNavigator();
 
@@ -24,11 +24,11 @@ export default function MainTabs() {
         return <Icon name={icons[route.name]} size={size} color={color} />;
       },
     })}>
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Video" component={VideoScreen} />
       <Tab.Screen name="Orders" component={OrdersScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }

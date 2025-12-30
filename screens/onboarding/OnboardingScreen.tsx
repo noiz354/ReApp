@@ -6,7 +6,7 @@ import { Button, Text } from 'react-native-paper';
 import { onboardingAnim } from '../../utils/animations';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-export default function OnboardingScreen({ navigation }: any) {
+export default function OnboardingScreen({ navigation, onComplete }: any) {
   return (
     <View style={styles.container}>
       <LottieView
@@ -27,7 +27,13 @@ export default function OnboardingScreen({ navigation }: any) {
       <Button
         mode="contained"
         icon={() => <Icon name="arrow-forward-circle" size={24} color="white" />}
-        onPress={() => navigation.navigate('Login')}
+        onPress={() => {
+          if (typeof onComplete === 'function') {
+            onComplete();
+          } else {
+            navigation.navigate('Login');
+          }
+        }}
         style={styles.button}
       >
         Get Started

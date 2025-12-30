@@ -1,4 +1,6 @@
 
 {
-  "java.jdt.ls.java.home": "C:\\Users\\Norman\\.jdks\\azul-17.0.17"
+      "gradle.allowParallelRun": true,
+  "java.jdt.ls.java.home": "C:\\Users\\Norman\\.jdks\\azul-17.0.17",
+  "java.configuration.updateBuildConfiguration": "interactive"
 }
