@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const loggedIn = true;
+  const loggedIn = false; // real auth should control this via AuthContext
   const [onboarded, setOnboarded] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
@@ -21,9 +21,7 @@ export default function RootNavigator() {
         if (!mounted) return;
         if (value === 'true') setOnboarded(true);
       })
-      .catch(() => {
-        /* ignore errors, treat as not onboarded */
-      })
+      .catch(() => {})
       .finally(() => {
         if (mounted) setInitializing(false);
       });
@@ -41,33 +39,18 @@ export default function RootNavigator() {
       </View>
     );
 
+  const initialRoute = !onboarded ? 'Onboarding' : loggedIn ? 'Main' : 'Auth';
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!onboarded ? (
-        <Stack.Screen name="Onboarding">
-          {props => (
-            <OnboardingScreen
-              {...props}
-              onComplete={async () => {
-                try {
-                  await AsyncStorage.setItem('@onboarded', 'true');
-                } catch (e) {
-                  /* ignore write errors */
-                }
-                setOnboarded(true);
-              }}
-            />
-          )}
-        </Stack.Screen>
-      ) : loggedIn ? (
-        <Stack.Screen name="Main" component={MainTabs} />
-      ) : (
-        <Stack.Screen name="Auth" component={AuthStack} />
-      )}
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+      <Stack.Screen name="Onboarding">{props => <OnboardingScreen {...props} />}</Stack.Screen>
+      <Stack.Screen name="Auth">{props => <AuthStack {...props} setOnboarded={async () => {
+          try { await AsyncStorage.setItem('@onboarded', 'true'); } catch (e) {}
+          setOnboarded(true);
+        }} />}</Stack.Screen>
+      <Stack.Screen name="Main" component={MainTabs} />
     </Stack.Navigator>
   );
 }
 
-const styles = StyleSheet.create({
-  splash: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-});
+const styles = StyleSheet.create({ splash: { flex: 1, justifyContent: 'center', alignItems: 'center' } });
