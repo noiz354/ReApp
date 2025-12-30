@@ -1,38 +1,81 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Alert } from 'react-native';
+import { View, TextInput, Button, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../../services/authService';
+import { ApiErrorResponse } from '../../types/auth';
 
 export default function LoginScreen({ navigation, setOnboarded }: any) {
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const { setToken } = useAuth();
 
-  async function handleLogin() {
-    // Simulate login request - replace with real API call
-    try {
-      // example: const res = await fetch('/web/auth/token/obtain/', ...)
-      await new Promise(r => setTimeout(r, 600));
-      const fakeToken = 'fake-jwt-token';
-      setToken(fakeToken);
-      await AsyncStorage.setItem('@token', fakeToken);
-      if (typeof setOnboarded === 'function') await setOnboarded();
-      navigation.navigate('Main');
-    } catch (e) {
-      Alert.alert('Login failed');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
     }
-  }
+
+    setLoading(true);
+    try {
+      const data = await authService.login({ email, password });
+      
+      setToken(data.access_token);
+      
+      if (typeof setOnboarded === 'function') {
+        await setOnboarded();
+      }
+      
+      navigation.replace('Main');
+    } catch (e: any) {
+const errorData = e.response?.data as ApiErrorResponse;
+  const message = errorData?.errors 
+    ? Object.values(errorData.errors).flat().join('\n') 
+    : errorData.message || 'An error occurred';
+  Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <View style={{ padding: 24 }}>
-      <TextInput placeholder="Email or Phone" style={{ borderBottomWidth: 1, marginBottom: 12 }} value={identifier} onChangeText={setIdentifier} />
-      <TextInput placeholder="Password / OTP" secureTextEntry value={password} onChangeText={setPassword} />
+    <View style={styles.container}>
+      <TextInput 
+        placeholder="Email" 
+        style={styles.input} 
+        value={email} 
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        editable={!loading}
+      />
+      <TextInput 
+        placeholder="Password" 
+        secureTextEntry 
+        style={styles.input} 
+        value={password} 
+        onChangeText={setPassword}
+        editable={!loading}
+      />
+      
       <View style={{ marginTop: 12 }}>
-        <Button title="Login" onPress={handleLogin} />
+        {loading ? (
+          <ActivityIndicator size="small" color="#0000ff" />
+        ) : (
+          <Button title="Login" onPress={handleLogin} />
+        )}
       </View>
-      <View style={{ marginTop: 8 }}>
-        <Button title="Login with Biometrics" onPress={() => Alert.alert('Biometrics not configured')} />
-      </View>
+
+      <Button 
+        title="Go to Register" 
+        onPress={() => navigation.navigate('Register')} 
+        disabled={loading}
+      />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { padding: 24, flex: 1, justifyContent: 'center' },
+  input: { borderBottomWidth: 1, marginBottom: 12, paddingVertical: 8 },
+});

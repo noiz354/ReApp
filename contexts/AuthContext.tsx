@@ -1,55 +1,56 @@
-import React, { createContext, useContext, useState, PropsWithChildren, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { navigationRef } from '../services/navigationRef';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import * as Keychain from 'react-native-keychain';
+import { setLogoutHandler } from '../utils/authEmitter';
 
-type AuthContextType = {
+interface AuthContextType {
   token: string | null;
-  setToken: (t: string | null) => void;
-};
+  setToken: (token: string | null) => void;
+  isLoading: boolean;
+}
 
-const AuthContext = createContext<AuthContextType>({ token: null, setToken: () => {} });
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: PropsWithChildren) {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let interval: number | undefined;
-    if (token) {
-      // verify every 60 seconds
-      const verify = async () => {
-        try {
-          const res = await fetch('/web/auth/token/verify/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ token }),
-          });
-          if (res.status === 401) {
-            // unauthorized: clear token and redirect to onboarding
-            setToken(null);
-            try { await AsyncStorage.setItem('@onboarded', 'false'); } catch (e) {}
-            try { await AsyncStorage.removeItem('@token'); } catch (e) {}
-            if (navigationRef.isReady()) navigationRef.navigate('Onboarding' as any);
-          }
-        } catch (e) {
-          // network errors: ignore for now
+    // 1. Register the global logout handler for Auto-Logout
+    setLogoutHandler(() => {
+      setToken(null);
+    });
+
+    // 2. Initial Boot: Check for existing session
+    const initializeAuth = async () => {
+      try {
+        const credentials = await Keychain.getGenericPassword();
+        if (credentials) {
+          // Assuming the password field contains your stringified JSON tokens
+          const { access_token } = JSON.parse(credentials.password);
+          setToken(access_token);
         }
-      };
-
-      // immediate verify then schedule
-      verify();
-      interval = (setInterval(verify, 60000) as unknown) as number;
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
+      } catch (error) {
+        console.error("Auth initialization failed:", error);
+      } finally {
+        // Essential: Mark as finished so RootNavigator can stop showing Splash
+        setIsLoading(false);
+      }
     };
-  }, [token]);
 
-  return <AuthContext.Provider value={{ token, setToken }}>{children}</AuthContext.Provider>;
-}
+    initializeAuth();
+  }, []);
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+  return (
+    <AuthContext.Provider value={{ token, setToken, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-export default AuthContext;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
