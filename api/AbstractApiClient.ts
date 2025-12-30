@@ -1,13 +1,13 @@
 // src/api/AbstractApiClient.ts
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import * as Keychain from 'react-native-keychain';
 import { triggerGlobalLogout } from '../utils/authEmitter';
 
-/**
- * Abstract Base Class
- * Handles the "How" (Interceptors, Auth logic, Retries).
- * Defer the "Where" (Base URL) to children.
- */
+type StoredTokens = {
+  access: string;
+  refresh: string;
+};
+
 export abstract class AbstractApiClient {
   protected abstract getBaseURL(): string;
   public readonly client: AxiosInstance;
@@ -20,7 +20,45 @@ export abstract class AbstractApiClient {
     this.setupInterceptors();
   }
 
+  private async loadTokens(): Promise<StoredTokens | null> {
+    try {
+      const x = await Keychain.getGenericPassword();
+      if (!x) return null;
+
+      const parsed = JSON.parse(x.password);
+      if (
+        typeof parsed?.access === 'string' &&
+        typeof parsed?.refresh === 'string'
+      ) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   private setupInterceptors() {
+    // =========================
+    // REQUEST
+    // =========================
+    this.client.interceptors.request.use(
+      async (config) => {
+        const tokens = await this.loadTokens();
+
+        if (tokens?.access) {
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${tokens.access}`;
+        }
+
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // =========================
+    // RESPONSE
+    // =========================
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -30,35 +68,30 @@ export abstract class AbstractApiClient {
           originalRequest._retry = true;
 
           try {
-            const credentials = await Keychain.getGenericPassword();
-            const tokens = credentials ? JSON.parse(credentials.password) : null;
+            const tokens = await this.loadTokens();
+            if (!tokens) throw new Error('No refresh token');
 
-            // ---------------------------------------------------------
-            // REFRESH LOGIC
-            // This is hardcoded as requested. It always hits the Auth Server,
-            // regardless of which child class (BaseURL) is active.
-            // ---------------------------------------------------------
-            const res = await axios.post('https://www.machinesitelearning.com/api/auth/refresh', {
-              refresh_token: tokens?.refresh_token,
-            });
+            const res = await axios.post(
+              'https://www.machinesitelearning.com/api/auth/refresh',
+              { refresh: tokens.refresh }
+            );
 
-            // Save new tokens
-            await Keychain.setGenericPassword('session', JSON.stringify(res.data));
+            // res.data MUST match { access, refresh }
+            await Keychain.setGenericPassword(
+              'session',
+              JSON.stringify(res.data)
+            );
 
-            // Update header
-            originalRequest.headers.Authorization = `Bearer ${res.data.access_token}`;
-            
-            // IMPORTANT: Ensure the retry uses the current instance's Base URL
+            originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
             originalRequest.baseURL = this.getBaseURL();
 
-            // Retry the request using THIS instance
             return this.client(originalRequest);
-          } catch (refreshError) {
-            // Session is dead -> Logout
+          } catch {
             await triggerGlobalLogout();
-            return Promise.reject(refreshError);
+            return Promise.reject(error);
           }
         }
+
         return Promise.reject(error);
       }
     );
@@ -66,23 +99,15 @@ export abstract class AbstractApiClient {
 }
 
 // =================================================================
-// CONCRETE IMPLEMENTATIONS
+// CONCRETE CLIENTS
 // =================================================================
 
-/**
- * ID: 0
- * The Main Production Client
- */
 class ProductionClient extends AbstractApiClient {
   protected getBaseURL(): string {
     return 'https://www.machinesitelearning.com/api';
   }
 }
 
-/**
- * ID: 1
- * The Content Clone / Search Service
- */
 class ContentCloneClient extends AbstractApiClient {
   protected getBaseURL(): string {
     return 'https://content-clone-search-4b75e4510f4d.herokuapp.com';
@@ -90,50 +115,15 @@ class ContentCloneClient extends AbstractApiClient {
 }
 
 // =================================================================
-// 1. THE REGISTRY (Recipes)
+// FACTORY (NO CACHE)
 // =================================================================
-// Maps an ID to a Class Constructor.
-// We use a specific type to ensure the classes extend AbstractApiClient.
-type ClientConstructor = new () => AbstractApiClient;
 
-const clientRegistry: Record<number, ClientConstructor> = {
-  0: ProductionClient, // ID 0 -> Production
-  1: ContentCloneClient, // ID 1 -> Content Clone
-};
-
-// =================================================================
-// 2. THE GLOBAL CACHE (The HashMap)
-// =================================================================
-// This variable lives in the module scope, effectively making it a Singleton.
-// It starts empty.
-const globalClientCache = new Map<number, AxiosInstance>();
-
-// =================================================================
-// 3. THE ACCESSOR (Lazy Loader)
-// =================================================================
 export const getApiClient = (envId: number = 0): AxiosInstance => {
-  // A. Check Cache: If we already have this client, return it immediately.
-  if (globalClientCache.has(envId)) {
-    // console.log(`[Cache Hit] Returning existing client for ID: ${envId}`);
-    return globalClientCache.get(envId)!;
-  }
+  const ClientClass =
+    envId === 1 ? ContentCloneClient : ProductionClient;
 
-  // B. Cache Miss: We need to create it.
-  // console.log(`[Cache Miss] Creating new client for ID: ${envId}`);
-
-  // 1. Find the correct class, fallback to Production (ID 0) if invalid ID
-  const ClientClass = clientRegistry[envId] || ProductionClient;
-  
-  // 2. Instantiate the wrapper class (which creates the axios instance)
-  const wrapperInstance = new ClientClass();
-
-  // 3. Store the underlying axios instance in the Global Cache
-  // This populates the map. If you call this for 0 and 1, map size is 2.
-  globalClientCache.set(envId, wrapperInstance.client);
-
-  // 4. Return the usable axios instance
-  return wrapperInstance.client;
+  return new ClientClass().client;
 };
 
-// OPTIONAL: Default export for the most common use case (Production)
+// Default export
 export default getApiClient(0);
