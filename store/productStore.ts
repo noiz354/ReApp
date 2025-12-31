@@ -1,7 +1,8 @@
 // src/store/productStore.ts
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchProducts } from '../services/api';
+// 1. Import the searchService
+import { searchService } from '../services/searchService';
 
 type Product = {
   id: string;
@@ -26,16 +27,31 @@ export const useProductStore = create<State>((set, get) => ({
     if (get().loading) return;
     set({ loading: true });
 
-    const next = await fetchProducts(get().page);
-    const merged = [...get().products, ...next];
+    try {
+      // 2. Call searchProducts with an empty query as requested
+      // We calculate the offset based on the current page and a fixed limit (e.g., 10)
+      const LIMIT = 10;
+      const currentOffset = (get().page - 1) * LIMIT;
 
-    set({
-      products: merged,
-      page: get().page + 1,
-      loading: false,
-    });
+      const next = await searchService.searchProducts({
+        query: "", // REQUIRED: Empty query to fetch the default list
+        limit: LIMIT,
+        offset: currentOffset,
+      });
 
-    AsyncStorage.setItem('products', JSON.stringify(merged));
+      const merged = [...get().products, ...next];
+
+      set({
+        products: merged,
+        page: get().page + 1,
+        loading: false,
+      });
+
+      AsyncStorage.setItem('products', JSON.stringify(merged));
+    } catch (error) {
+      console.error("Failed to fetch products via searchService:", error);
+      set({ loading: false });
+    }
   },
 }));
 

@@ -7,10 +7,11 @@ import { onboardingAnim } from '../../utils/animations';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 interface OnboardingProps {
-  onFinish: () => void; // This matches the handleSetOnboarded function
+  onFinish: () => void; // This matches the handleSetOnboarded function passed from RootNavigator
 }
 
-export default function OnboardingScreen({ navigation }: OnboardingProps) {
+// 1. Destructure onFinish from props instead of using navigation
+export default function OnboardingScreen({ onFinish }: OnboardingProps) {
   return (
     <View style={styles.container}>
       <LottieView
@@ -31,7 +32,8 @@ export default function OnboardingScreen({ navigation }: OnboardingProps) {
       <Button
         mode="contained"
         icon={() => <Icon name="arrow-forward-circle" size={24} color="white" />}
-        onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
+        // 2. Call onFinish() to trigger the state change in RootNavigator
+        onPress={onFinish}
         style={styles.button}
       >
         Get Started
