@@ -10,8 +10,9 @@ import {
   StatusBar,
   TextInput,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native'; // Added import
 import { Search, Pencil, Headphones } from 'lucide-react-native';
-import { SegmentedButtons } from 'react-native-paper'; // Standard for 0.83
+import { SegmentedButtons } from 'react-native-paper';
 import { theme } from '../../theme';
 
 const MOCK_CHATS = [
@@ -21,12 +22,12 @@ const MOCK_CHATS = [
   { id: '4', name: 'Sarah', message: 'Sounds good, thanks for t...', time: 'Yesterday', count: 0, image: 'https://i.pravatar.cc/150?u=sarah', type: 'All' },
 ];
 
-export default function ChatScreen() {
+export default function InboxCenterScreen() {
+  const navigation = useNavigation<any>(); // Initialize navigation hook
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
-  // Logic: Filter chats based on tab and search query
   const filteredChats = useMemo(() => {
     return MOCK_CHATS.filter(chat => {
       const matchesTab = activeTab === 'All' || chat.type === activeTab || (activeTab === 'Unread' && (chat.count > 0 || chat.unread));
@@ -36,7 +37,12 @@ export default function ChatScreen() {
   }, [activeTab, searchQuery]);
 
   const renderChatItem = ({ item }: { item: typeof MOCK_CHATS[0] }) => (
-    <TouchableOpacity style={styles.chatItem} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={styles.chatItem} 
+      activeOpacity={0.7}
+      // Navigate to ChatList with the chat id
+      onPress={() => navigation.navigate('ChatList', { chatId: item.id, chatName: item.name })}
+    >
       <View style={styles.avatarContainer}>
         {item.icon === 'headphones' ? (
           <View style={[styles.avatar, { backgroundColor: item.bgColor, justifyContent: 'center', alignItems: 'center' }]}>
@@ -70,7 +76,6 @@ export default function ChatScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Dynamic Header */}
       <View style={styles.header}>
         {isSearching ? (
           <TextInput
@@ -92,7 +97,6 @@ export default function ChatScreen() {
         )}
       </View>
 
-      {/* Segmented Control */}
       <View style={styles.segmentedWrapper}>
         <SegmentedButtons
           value={activeTab}
