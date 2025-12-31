@@ -5,8 +5,9 @@ import Icon from 'react-native-vector-icons/Feather'; // Assuming you have vecto
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { searchService, SearchParams } from '../../services/searchService';
 import FilterSortModal, { FilterResult } from '../../components/FilterSortModal';
+import ProductCard from '../../components/ProductCard'; // Added
 
-export default function SearchScreen() {
+export default function SearchScreen({ navigation }: any)  {
   const isOnline = useNetworkStatus();
   
   // -- State --
@@ -143,18 +144,15 @@ export default function SearchScreen() {
           keyExtractor={item => item.id?.toString() || Math.random().toString()}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.resultItem}>
-              <View>
-                <Text style={styles.resultTitle}>{item.name}</Text>
-                {/* Fallback for category display if available in item */}
-                <Text style={styles.resultSub}>
-                  {item.categorySlug ? `Category: ${item.categorySlug}` : ''}
-                </Text>
-              </View>
-              <Text style={styles.resultPrice}>
-                {item.price ? `Rp ${item.price.toLocaleString()}` : ''}
-              </Text>
-            </TouchableOpacity>
+              <ProductCard 
+              product={{
+                id: item.id?.toString(),
+                name: item.name,
+                price: item.price ? `Rp ${item.price.toLocaleString()}` : '',
+                image: item.image || 'https://via.placeholder.com/150' 
+              }}
+              onPress={() => navigation.navigate('ProductDetailRoot', { product: item })}
+            /> // Replaced manual rendering with ProductCard
           )}
           ListEmptyComponent={
             query.length > 0 && !loading ? (
