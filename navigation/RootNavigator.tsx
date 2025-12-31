@@ -9,6 +9,8 @@ import AuthStack from './AuthStack';
 import MainTabs from './MainTabs';
 import ChatStack from './ChatStack'; //
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
+import ProductDetailScreen from '../screens/product/ProductDetailScreen'; // Import Detail
+import SearchScreen from '../screens/search/SearchScreen'; // New Search Screen
 
 const Stack = createNativeStackNavigator();
 
@@ -62,6 +64,21 @@ export default function RootNavigator() {
           <Stack.Screen name="Main" component={MainTabs} />
           {/* Add the dedicated Chat Stack here */}
           <Stack.Screen name="ChatRoot" component={ChatStack} />
+          <Stack.Screen 
+            name="ProductDetailRoot" 
+            component={ProductDetailScreen} 
+            options={{ headerShown: true, title: 'Product Details' }} 
+          />
+
+          {/* The "New Activity" Search Screen */}
+          <Stack.Screen 
+            name="LocalSearch" 
+            component={SearchScreen} 
+            options={{
+              animation: 'fade_from_bottom', // Makes it feel like a new activity/modal
+              presentation: 'fullScreenModal', // Covers the entire screen
+            }}
+          />
         </>
       )}
     </Stack.Navigator>

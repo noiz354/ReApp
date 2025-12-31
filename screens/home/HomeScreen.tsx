@@ -12,8 +12,10 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import Skeleton from '../../components/Skeleton';
 import OfflineBanner from '../../components/OfflineBanner';
+import ProductCard from '../../components/ProductCard'; // Import the new component
 import { useProductStore } from '../../store/productStore';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+
 
 export default function HomeScreen({ navigation }: any) {
   const { products, loadNext, loading } = useProductStore();
@@ -42,7 +44,7 @@ export default function HomeScreen({ navigation }: any) {
         {/* Search Bar */}
         <TouchableOpacity 
           style={styles.searchBar} 
-          onPress={() => navigation.navigate('Search')}
+          onPress={() => navigation.navigate('LocalSearch')}
         >
           <Icon name="search" size={18} color="#666" style={styles.searchIcon} />
           <Text style={styles.searchPlaceholder}>Search products...</Text>
@@ -56,17 +58,10 @@ export default function HomeScreen({ navigation }: any) {
         onEndReachedThreshold={0.7}
         contentContainerStyle={styles.listPadding}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('ProductDetail', { product: item })}
-            style={styles.productItem}
-          >
-            <Image 
-              source={{ uri: item.image }} 
-              style={styles.productImage} 
-            />
-            <Text style={styles.productName}>{item.name}</Text>
-            <Text style={styles.productPrice}>{item.price}</Text>
-          </TouchableOpacity>
+          <ProductCard
+            product={item}
+            onPress={() => navigation.navigate('ProductDetailRoot', { product: item })}
+          />
         )}
         ListFooterComponent={loading ? <Skeleton height={150} /> : null}
       />
