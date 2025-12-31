@@ -1,17 +1,45 @@
 // utils/authStorage.ts
-import * as SecureStore from 'expo-secure-store';
+import * as Keychain from 'react-native-keychain';
 
-const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
+const SERVICE = 'auth_tokens';
 
-export const saveTokens = async (access: string, refresh: string) => {
-  await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, access);
-  await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refresh);
-};
+type TokenTuple = [access: string, refresh: string];
 
-export const getAccessToken = () => SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-export const getRefreshToken = () => SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-export const clearTokens = async () => {
-  await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
-};
+export async function saveTokens(access: string, refresh: string): Promise<void> {
+  console.warn('[authStorage] save Tokens');
+  await Keychain.setGenericPassword(
+    'tokens',
+    JSON.stringify({ access, refresh }),
+    { service: SERVICE }
+  );
+}
+
+export async function getAccessToken(): Promise<TokenTuple | null> {
+  const result = await Keychain.getGenericPassword({ service: SERVICE });
+
+  console.warn('[authStorage] raw keychain result:', result);
+
+  if (!result) return null;
+
+  try {
+    const parsed = JSON.parse(result.password);
+    console.warn('[authStorage] parsed value:', parsed);
+
+    if (
+      typeof parsed?.access === 'string' &&
+      typeof parsed?.refresh === 'string'
+    ) {
+      return [parsed.access, parsed.refresh];
+    }
+
+    console.warn('[authStorage] Invalid token shape');
+    return null;
+  } catch (err) {
+    console.error('[authStorage] Failed to parse tokens', err);
+    return null;
+  }
+}
+
+export async function clearTokens(): Promise<void> {
+  await Keychain.resetGenericPassword({ service: SERVICE });
+}

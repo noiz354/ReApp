@@ -2,6 +2,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as Keychain from 'react-native-keychain';
 import { triggerGlobalLogout } from '../utils/authEmitter';
+import { saveTokens } from '../utils/authStorage';
 
 type StoredTokens = {
   access: string;
@@ -81,6 +82,8 @@ export abstract class AbstractApiClient {
               'session',
               JSON.stringify(res.data)
             );
+
+            await saveTokens(res.data.access, res.data.refresh);    
 
             originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
             originalRequest.baseURL = this.getBaseURL();

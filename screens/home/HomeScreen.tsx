@@ -7,7 +7,6 @@ import {
   View, 
   TextInput, 
   StyleSheet, 
-  SafeAreaView 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import Skeleton from '../../components/Skeleton';
@@ -15,7 +14,7 @@ import OfflineBanner from '../../components/OfflineBanner';
 import ProductCard from '../../components/ProductCard'; // Import the new component
 import { useProductStore } from '../../store/productStore';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen({ navigation }: any) {
   const { products, loadNext, loading } = useProductStore();

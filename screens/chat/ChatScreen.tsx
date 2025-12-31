@@ -1,10 +1,9 @@
 // screens/chat/ChatScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   FlatList,
@@ -13,20 +12,74 @@ import {
   Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { theme } from '../../theme'; //
-
-// Mock data based on the provided image
-const MOCK_MESSAGES = [
-  { id: '1', text: 'Hello! How can I help you today?', sender: 'store', timestamp: 'TODAY' },
-  { id: '2', text: 'Hi! I have a question about my order.', sender: 'user' },
-  { id: '3', text: 'Of course, I can help with that. Are you referring to this item?', sender: 'store', 
-    product: { name: 'iPhone 14 Pro Case', price: '$24.99', image: 'https://via.placeholder.com/50' } 
-  },
-  { id: '4', text: "Yes, that's the one! Here is a photo of the defect.", sender: 'user' },
-];
+import { theme } from '../../theme';
+import { authService } from '../../services/authService'; //
+import { useRoute } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Keychain from 'react-native-keychain';
 
 export default function ChatScreen({ navigation }: any) {
+  const route = useRoute<any>();
+  const { chatId, chatName } = route.params || {}; // Parameters from InboxCenterScreen
+  
   const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<any[]>([]);
+  const socket = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const connectWebSocket = async () => {
+      const credentials = await Keychain.getGenericPassword();
+      const tokens = credentials ? JSON.parse(credentials.password) : null;
+      if (!tokens?.access) return;
+
+      // Replace with your local IP or production domain
+      // We pass the token in the query string as mobile headers are limited
+      const WS_URL = `wss://www.machinesitelearning.com/ws/chat/${chatId}/?token=${tokens.access}`;
+      console.log('Connected to WebSocket');
+      
+      socket.current = new WebSocket(WS_URL);
+
+      socket.current.onopen = () => {
+        console.log('Connected to WebSocket');
+      };
+
+      socket.current.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        // Assuming your consumer sends a message object
+        setMessages((prev) => [...prev, data.message]);
+      };
+
+      socket.current.onerror = (e) => {
+        console.error('WebSocket Error:', e);
+      };
+
+      socket.current.onclose = (e) => {
+        console.log('WebSocket Closed:', e.reason);
+      };
+    };
+
+    connectWebSocket();
+
+    // Cleanup on unmount
+    return () => {
+      socket.current?.close();
+    };
+  }, [chatId]);
+
+  const handleSendMessage = () => {
+    if (message.trim() && socket.current?.readyState === WebSocket.OPEN) {
+      const messagePayload = {
+        message: message,
+        sender: 'user', // Identify the sender for the backend
+      };
+      
+      socket.current.send(JSON.stringify(messagePayload));
+      
+      // Optionally optimistically update UI
+      setMessages((prev) => [...prev, { ...messagePayload, id: Date.now().toString() }]);
+      setMessage('');
+    }
+  };
 
   const renderMessage = ({ item }: { item: any }) => {
     const isUser = item.sender === 'user';
@@ -36,21 +89,8 @@ export default function ChatScreen({ navigation }: any) {
         {!isUser && <View style={styles.storeAvatar} />}
         <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.storeBubble]}>
           <Text style={[styles.messageText, isUser ? styles.userText : styles.storeText]}>
-            {item.text}
+            {item.text || item.message}
           </Text>
-          
-          {item.product && (
-            <View style={styles.productCard}>
-              <Image source={{ uri: item.product.image }} style={styles.productImage} />
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{item.product.name}</Text>
-                <Text style={styles.productPrice}>{item.product.price}</Text>
-              </View>
-              <TouchableOpacity style={styles.viewButton}>
-                <Text style={styles.viewButtonText}>View</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       </View>
     );
@@ -58,7 +98,6 @@ export default function ChatScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -69,38 +108,25 @@ export default function ChatScreen({ navigation }: any) {
                <View style={styles.onlineStatus} />
             </View>
             <View>
-              <Text style={styles.headerTitle}>Official Store</Text>
+              <Text style={styles.headerTitle}>{chatName || 'Official Store'}</Text>
               <Text style={styles.headerSubtitle}>Online</Text>
             </View>
           </View>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Icon name="phone" size={20} color="#000" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Icon name="more-vertical" size={20} color="#000" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <FlatList
-        data={MOCK_MESSAGES}
-        keyExtractor={(item) => item.id}
+        data={messages}
+        keyExtractor={(item, index) => item.id?.toString() || index.toString()}
         renderItem={renderMessage}
         contentContainerStyle={styles.chatList}
-        ListHeaderComponent={<Text style={styles.dateSeparator}>TODAY</Text>}
       />
 
-      {/* Input Area */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
-            <Icon name="plus" size={24} color="#666" />
-          </TouchableOpacity>
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}
@@ -108,7 +134,10 @@ export default function ChatScreen({ navigation }: any) {
               value={message}
               onChangeText={setMessage}
             />
-            <TouchableOpacity style={styles.sendButton}>
+            <TouchableOpacity 
+              style={styles.sendButton} 
+              onPress={handleSendMessage}
+            >
               <Icon name="send" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -117,6 +146,8 @@ export default function ChatScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
+// ... styles remain largely the same as your provided content
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
