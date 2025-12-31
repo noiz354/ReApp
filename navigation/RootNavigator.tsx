@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import AuthStack from './AuthStack';
 import MainTabs from './MainTabs';
+import ChatStack from './ChatStack'; //
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 
 const Stack = createNativeStackNavigator();
@@ -57,7 +58,11 @@ export default function RootNavigator() {
       ) : token === null ? (
         <Stack.Screen name="Auth" component={AuthStack} />
       ) : (
-        <Stack.Screen name="Main" component={MainTabs} />
+        <>
+          <Stack.Screen name="Main" component={MainTabs} />
+          {/* Add the dedicated Chat Stack here */}
+          <Stack.Screen name="ChatRoot" component={ChatStack} />
+        </>
       )}
     </Stack.Navigator>
   );

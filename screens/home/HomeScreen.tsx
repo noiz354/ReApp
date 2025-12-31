@@ -32,7 +32,7 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.headerTopRow}>
           <Text style={styles.brandTitle}>ReApp</Text>
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Chat')}
+            onPress={() => navigation.navigate('ChatRoot')}
             style={styles.chatButton}
           >
             <Icon name="inbox" size={24} color="#000" />
