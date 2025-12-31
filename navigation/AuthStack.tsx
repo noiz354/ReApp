@@ -1,33 +1,17 @@
-import React, { useState } from 'react';
+// navigation/AuthStack.tsx
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
-import AuthStack from './AuthStack';
+import RegisterScreen from '../screens/auth/RegisterScreen'; // Ensure this is imported
 
 const Stack = createNativeStackNavigator();
 
-
-export default function RootNavigator() {
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
-
-  // This function must be passed down to Onboarding
-  const handleSetOnboarded = async () => {
-    await AsyncStorage.setItem('onboarded', 'true');
-    setOnboarded(true); // This update triggers the re-render to show <AuthStack />
-  };
-
-  if (onboarded === null) return null; // Or a splash screen
-
+export default function AuthStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!onboarded ? (
-        // Pass the function here
-        <Stack.Screen name="Onboarding">
-          {(props) => <OnboardingScreen {...props} onFinish={handleSetOnboarded} />}
-        </Stack.Screen>
-      ) : (
-        <Stack.Screen name="Auth" component={AuthStack} />
-      )}
+    <Stack.Navigator>
+      {/* FIX: Remove OnboardingScreen. Login should be the first screen here */}
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 }
