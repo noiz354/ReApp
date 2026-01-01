@@ -1,4 +1,4 @@
-package com.reapp
+package com.imanino.store
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

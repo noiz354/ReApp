@@ -1,4 +1,4 @@
-package com.reapp
+package com.imanino.store
 
 import android.app.Application
 import com.facebook.react.PackageList
