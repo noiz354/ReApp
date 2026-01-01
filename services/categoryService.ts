@@ -19,7 +19,7 @@ export const categoryService = {
     }
 
     // 2. Fetch fresh data if cache is missing or expired
-    const client = await getApiClient();
+    const client = await getApiClient(1);
     const response = await client.get('/categories');
     const categories = response.data;
 

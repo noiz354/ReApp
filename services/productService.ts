@@ -12,7 +12,7 @@ export interface UpdateProductDto extends Partial<CreateProductDto> {}
 
 export const productService = {
   getProducts: async (categoryId?: string) => {
-    const client = await getApiClient();
+    const client = await getApiClient(1);
     // Assuming the API supports a category filter query param
     const url = categoryId ? `/products?categoryId=${categoryId}` : '/products';
     const response = await client.get(url);
