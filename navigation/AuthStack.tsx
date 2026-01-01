@@ -8,7 +8,10 @@ const Stack = createNativeStackNavigator();
 
 export default function AuthStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={{
+      headerShown: false,
+    }}
+      >
       {/* FIX: Remove OnboardingScreen. Login should be the first screen here */}
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
