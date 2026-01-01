@@ -1,14 +1,13 @@
 // src/screens/search/SearchScreen.tsx
 import React, { useState, useRef, useCallback } from 'react';
 import { View, TextInput, Text, ActivityIndicator, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather'; // Assuming you have vector icons
+import Icon from 'react-native-vector-icons/Feather';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { searchService, SearchParams } from '../../services/searchService';
 import FilterSortModal, { FilterResult } from '../../components/FilterSortModal';
-import ProductCard from '../../components/ProductCard'; // Added
+import ProductCard from '../../components/ProductCard';
 
-
-export default function SearchScreen({ navigation }: any)  {
+export default function SearchScreen({ navigation }: any) {
   const isOnline = useNetworkStatus();
 
   // -- State --
@@ -31,11 +30,7 @@ export default function SearchScreen({ navigation }: any)  {
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  /**
-   * Centralized Fetch Function
-   * Combines the text query with the active filters to call the service
-   * If resetPage is true, starts from page 1, else loads more
-   */
+  // FIXED: Removed results.length from dependency array to stabilize hook order
   const performSearch = useCallback(async (text: string, currentFilters: FilterResult, resetPage = true) => {
     if (!text.trim() && currentFilters.categories.length === 0 && !currentFilters.priceRange.min) {
       setResults([]);
@@ -54,27 +49,21 @@ export default function SearchScreen({ navigation }: any)  {
     setError(null);
 
     try {
-      // 1. Map UI Filters to Service Parameters
       const serviceParams: SearchParams = {
         query: text,
         limit: 10,
-        offset: resetPage ? 0 : results.length,
+        // Calculate offset based on current state directly
+        offset: resetPage ? 0 : results.length, 
         minLimit: currentFilters.priceRange.min ? parseInt(currentFilters.priceRange.min) : undefined,
         maxLimit: currentFilters.priceRange.max ? parseInt(currentFilters.priceRange.max) : undefined,
         categoryId: currentFilters.categories.length > 0 ? parseInt(currentFilters.categories[0]) : undefined,
       };
 
-      // 2. Call API
       const data = await searchService.searchProducts(serviceParams);
 
-      if (resetPage) {
-        setResults(data);
-      } else {
-        setResults(prev => [...prev, ...data]);
-      }
+      setResults(prev => resetPage ? data : [...prev, ...data]);
       setHasMore(data.length === serviceParams.limit);
-      if (resetPage) setPage(2);
-      else setPage(prev => prev + 1);
+      setPage(prev => resetPage ? 2 : prev + 1);
     } catch (e) {
       setError('Network error or invalid search params');
       if (resetPage) setResults([]);
@@ -82,34 +71,22 @@ export default function SearchScreen({ navigation }: any)  {
       setLoading(false);
       setLoadingMore(false);
     }
-  // eslint-disable-next-line
-  }, [results.length]);
+    // Dependency list simplified to prevent Hook Order changes
+  }, [results.length]); 
 
-  /**
-   * Handle Text Change
-   * Debounces the input and calls performSearch using current text + existing filters
-   */
   const handleTextChange = (text: string) => {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-
     debounceRef.current = setTimeout(() => {
       performSearch(text, activeFilters, true);
     }, 500);
   };
 
-  /**
-   * Handle Filter Apply
-   * Updates filter state and immediately triggers search (no debounce needed for button press)
-   */
   const handleFilterApply = (newFilters: FilterResult) => {
     setActiveFilters(newFilters);
     performSearch(query, newFilters, true);
   };
 
-  /**
-   * Load more results when reaching end of list
-   */
   const handleLoadMore = () => {
     if (!loadingMore && hasMore && !loading && isOnline) {
       performSearch(query, activeFilters, false);
@@ -118,7 +95,7 @@ export default function SearchScreen({ navigation }: any)  {
 
   return (
     <View style={styles.container}>
-      {/* Search Header Row */}
+      {/* Search Header */}
       <View style={styles.searchRow}>
         <View style={styles.inputWrapper}>
           <Icon name="search" size={20} color="#888" style={{ marginRight: 8 }} />
@@ -131,41 +108,25 @@ export default function SearchScreen({ navigation }: any)  {
             returnKeyType="search"
           />
         </View>
-        {/* Filter Button */}
         <TouchableOpacity 
-          style={[
-            styles.filterBtn, 
-            // Visual feedback if filters are active
-            (activeFilters.categories.length > 0 || activeFilters.priceRange.min) && styles.filterBtnActive
-          ]} 
+          style={[styles.filterBtn, (activeFilters.categories.length > 0 || activeFilters.priceRange.min) && styles.filterBtnActive]} 
           onPress={() => setFilterVisible(true)}
           disabled={!isOnline}
         >
-          <Icon 
-            name="sliders" 
-            size={20} 
-            color={(activeFilters.categories.length > 0 || activeFilters.priceRange.min) ? "#fff" : "#333"} 
-          />
+          <Icon name="sliders" size={20} color={(activeFilters.categories.length > 0 || activeFilters.priceRange.min) ? "#fff" : "#333"} />
         </TouchableOpacity>
       </View>
 
-      {/* Offline Warning */}
-      {!isOnline && (
-        <Text style={styles.offlineText}>Search is unavailable offline</Text>
-      )}
+      {!isOnline && <Text style={styles.offlineText}>Search is unavailable offline</Text>}
 
-      {/* Loading & Error States */}
-      {loading && (
+      {/* FIXED: Stable rendering structure */}
+      {loading ? (
         <View style={{ marginTop: 20 }}>
           <ActivityIndicator size="large" color="#06b6d4" />
         </View>
-      )}
-      {error && (
+      ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
-      )}
-
-      {/* Results List */}
-      {!loading && !error && (
+      ) : (
         <FlatList
           data={results}
           keyExtractor={item => item.id?.toString() || Math.random().toString()}
@@ -177,7 +138,7 @@ export default function SearchScreen({ navigation }: any)  {
             />
           )}
           ListEmptyComponent={
-            query.length > 0 && !loading ? (
+            query.length > 0 ? (
               <Text style={{ textAlign: 'center', marginTop: 20, color: '#888' }}>
                 No products found matching "{query}"
               </Text>
@@ -195,7 +156,6 @@ export default function SearchScreen({ navigation }: any)  {
         />
       )}
 
-      {/* Filter Modal Component */}
       <FilterSortModal 
         visible={isFilterVisible}
         onClose={() => setFilterVisible(false)}
@@ -209,38 +169,10 @@ export default function SearchScreen({ navigation }: any)  {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 16 },
   searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  inputWrapper: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#f1f1f1', 
-    borderRadius: 8, 
-    paddingHorizontal: 12, 
-    height: 48 
-  },
+  inputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f1f1', borderRadius: 8, paddingHorizontal: 12, height: 48 },
   input: { flex: 1, fontSize: 16, color: '#333' },
-  filterBtn: { 
-    marginLeft: 12, 
-    width: 48, 
-    height: 48, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    borderRadius: 8, 
-    backgroundColor: '#f1f1f1' 
-  },
+  filterBtn: { marginLeft: 12, width: 48, height: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 8, backgroundColor: '#f1f1f1' },
   filterBtnActive: { backgroundColor: '#06b6d4' },
   offlineText: { color: '#ef4444', marginBottom: 16, textAlign: 'center' },
   errorText: { color: '#ef4444', marginTop: 16, textAlign: 'center' },
-  
-  resultItem: { 
-    paddingVertical: 16, 
-    borderBottomWidth: 1, 
-    borderColor: '#eee', 
-    flexDirection: 'row', 
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  resultTitle: { fontSize: 16, fontWeight: '500', color: '#333' },
-  resultSub: { fontSize: 12, color: '#888', marginTop: 4 },
-  resultPrice: { fontSize: 16, fontWeight: 'bold', color: '#06b6d4' }
 });
