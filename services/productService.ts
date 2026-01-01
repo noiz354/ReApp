@@ -11,11 +11,12 @@ export interface CreateProductDto {
 export interface UpdateProductDto extends Partial<CreateProductDto> {}
 
 export const productService = {
-  getProducts: async (limit = 10, offset = 0) => {
-    const { data } = await getApiClient(1).get('/products', {
-      params: { limit, offset },
-    });
-    return data;
+  getProducts: async (categoryId?: string) => {
+    const client = await getApiClient();
+    // Assuming the API supports a category filter query param
+    const url = categoryId ? `/products?categoryId=${categoryId}` : '/products';
+    const response = await client.get(url);
+    return response.data;
   },
 
   getProduct: async (id: number) => {

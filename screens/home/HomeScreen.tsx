@@ -1,128 +1,144 @@
-import React, { useEffect } from 'react';
-import { 
-  FlatList, 
-  Text, 
-  Image, 
-  TouchableOpacity, 
-  View, 
-  TextInput, 
-  StyleSheet, 
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
+import { categoryService } from '../../services/categoryService';
+import { productService } from '../../services/productService';
+import ProductCard from '../../components/ProductCard';
 import Skeleton from '../../components/Skeleton';
-import OfflineBanner from '../../components/OfflineBanner';
-import ProductCard from '../../components/ProductCard'; // Import the new component
-import { useProductStore } from '../../store/productStore';
-import { useNetworkStatus } from '../../hooks/useNetworkStatus';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function HomeScreen({ navigation }: any) {
-  const { products, loadNext, loading } = useProductStore();
-  const isOnline = useNetworkStatus();
+const HomeScreen = () => {
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   useEffect(() => {
-    loadNext();
+    const initData = async () => {
+      try {
+        setLoadingCategories(true);
+        const fetchedCategories = await categoryService.getCategories();
+        setCategories(fetchedCategories);
+
+        // Requirement: Select the first category by default
+        if (fetchedCategories && fetchedCategories.length > 0) {
+          handleCategorySelect(fetchedCategories[0].id);
+        }
+      } catch (error) {
+        console.error('Error initializing Home Screen:', error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    initData();
   }, []);
 
+  const handleCategorySelect = async (id: string) => {
+    setSelectedCategoryId(id);
+    setLoadingProducts(true);
+    try {
+      const filteredProducts = await productService.getProducts(id);
+      setProducts(filteredProducts);
+    } catch (error) {
+      console.error('Error fetching products for category:', error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const renderCategoryItem = ({ item }: { item: any }) => {
+    const isSelected = selectedCategoryId === item.id;
+    return (
+      <TouchableOpacity
+        onPress={() => handleCategorySelect(item.id)}
+        style={[styles.categoryItem, isSelected && styles.selectedCategoryItem]}
+      >
+        <View style={styles.categoryIconCircle} />
+        <Text style={[styles.categoryText, isSelected && styles.selectedCategoryText]}>
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      {!isOnline && <OfflineBanner />}
-
-      {/* Header with Inbox Icon */}
-      <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <Text style={styles.brandTitle}>ReApp</Text>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('ChatRoot')}
-            style={styles.chatButton}
-          >
-            <Icon name="inbox" size={24} color="#000" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Bar */}
-        <TouchableOpacity 
-          style={styles.searchBar} 
-          onPress={() => navigation.navigate('LocalSearch')}
-        >
-          <Icon name="search" size={18} color="#666" style={styles.searchIcon} />
-          <Text style={styles.searchPlaceholder}>Search products...</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={products}
-        keyExtractor={i => i.id.toString()}
-        onEndReached={loadNext}
-        onEndReachedThreshold={0.7}
-        contentContainerStyle={styles.listPadding}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            onPress={() => navigation.navigate('ProductDetailRoot', { product: item })}
+    <View style={styles.container}>
+      {/* 1. Category Ribbon */}
+      <View style={styles.categoryContainer}>
+        {loadingCategories ? (
+          <FlatList
+            horizontal
+            data={[1, 2, 3, 4]}
+            keyExtractor={(i) => i.toString()}
+            renderItem={() => (
+              <View style={styles.skeletonItem}>
+                <Skeleton width={60} height={60} borderRadius={30} />
+                <View style={{ marginTop: 8 }}>
+                  <Skeleton width={40} height={10} />
+                </View>
+              </View>
+            )}
+          />
+        ) : (
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={categories}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderCategoryItem}
           />
         )}
-        ListFooterComponent={loading ? <Skeleton height={150} /> : null}
-      />
-    </SafeAreaView>
+      </View>
+
+      {/* 2. Product List of Selected Category */}
+      <View style={styles.productListContainer}>
+        <Text style={styles.sectionTitle}>
+          {categories.find((c) => c.id === selectedCategoryId)?.name || 'Products'}
+        </Text>
+
+        {loadingProducts ? (
+          <ActivityIndicator size="large" color="#000" style={{ marginTop: 20 }} />
+        ) : (
+          <FlatList
+            data={products}
+            numColumns={2}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.productWrapper}>
+                <ProductCard product={item} />
+              </View>
+            )}
+            contentContainerStyle={styles.productGrid}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No products available in this category.</Text>
+            }
+          />
+        )}
+      </View>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  brandTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  chatButton: {
-    padding: 4,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 40,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchPlaceholder: {
-    color: '#666',
-    fontSize: 14,
-  },
-  listPadding: {
-    paddingHorizontal: 16,
-  },
-  productItem: {
-    marginBottom: 16,
-  },
-  productImage: {
-    height: 180, 
-    borderRadius: 16,
-    backgroundColor: '#eee',
-  },
-  productName: {
-    fontSize: 16,
-    marginTop: 8,
-  },
-  productPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  }
+  container: { flex: 1, backgroundColor: '#fff' },
+  categoryContainer: { height: 110, paddingVertical: 10 },
+  categoryItem: { alignItems: 'center', marginHorizontal: 12, paddingBottom: 5 },
+  selectedCategoryItem: { borderBottomWidth: 2, borderBottomColor: '#000' },
+  categoryIconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F3F4F6', marginBottom: 6 },
+  categoryText: { fontSize: 12, color: '#6B7280' },
+  selectedCategoryText: { fontWeight: 'bold', color: '#000' },
+  skeletonItem: { marginRight: 15, alignItems: 'center' },
+  productListContainer: { flex: 1, paddingHorizontal: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  productGrid: { paddingBottom: 20 },
+  productWrapper: { flex: 0.5, padding: 5 },
+  emptyText: { textAlign: 'center', marginTop: 50, color: '#9CA3AF' },
 });
+
+export default HomeScreen;
