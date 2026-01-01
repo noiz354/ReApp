@@ -7,15 +7,21 @@ import { searchService, SearchParams } from '../../services/searchService';
 import FilterSortModal, { FilterResult } from '../../components/FilterSortModal';
 import ProductCard from '../../components/ProductCard'; // Added
 
+
 export default function SearchScreen({ navigation }: any)  {
   const isOnline = useNetworkStatus();
-  
+
   // -- State --
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   // -- Filter State --
   const [isFilterVisible, setFilterVisible] = useState(false);
   const [activeFilters, setActiveFilters] = useState<FilterResult>({
@@ -28,15 +34,23 @@ export default function SearchScreen({ navigation }: any)  {
   /**
    * Centralized Fetch Function
    * Combines the text query with the active filters to call the service
+   * If resetPage is true, starts from page 1, else loads more
    */
-  const performSearch = useCallback(async (text: string, currentFilters: FilterResult) => {
+  const performSearch = useCallback(async (text: string, currentFilters: FilterResult, resetPage = true) => {
     if (!text.trim() && currentFilters.categories.length === 0 && !currentFilters.priceRange.min) {
       setResults([]);
       setLoading(false);
+      setHasMore(true);
+      setPage(1);
       return;
     }
 
-    setLoading(true);
+    if (resetPage) {
+      setLoading(true);
+      setPage(1);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
 
     try {
@@ -44,25 +58,32 @@ export default function SearchScreen({ navigation }: any)  {
       const serviceParams: SearchParams = {
         query: text,
         limit: 10,
-        // Parse 'min' string to number if it exists
+        offset: resetPage ? 0 : results.length,
         minLimit: currentFilters.priceRange.min ? parseInt(currentFilters.priceRange.min) : undefined,
-        // Parse 'max' string to number if it exists
         maxLimit: currentFilters.priceRange.max ? parseInt(currentFilters.priceRange.max) : undefined,
-        // Parse first category ID to number (Service expects single number)
         categoryId: currentFilters.categories.length > 0 ? parseInt(currentFilters.categories[0]) : undefined,
       };
 
       // 2. Call API
       const data = await searchService.searchProducts(serviceParams);
-      setResults(Array.isArray(data) ? data : []);
-      
+
+      if (resetPage) {
+        setResults(data);
+      } else {
+        setResults(prev => [...prev, ...data]);
+      }
+      setHasMore(data.length === serviceParams.limit);
+      if (resetPage) setPage(2);
+      else setPage(prev => prev + 1);
     } catch (e) {
       setError('Network error or invalid search params');
-      setResults([]);
+      if (resetPage) setResults([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, []);
+  // eslint-disable-next-line
+  }, [results.length]);
 
   /**
    * Handle Text Change
@@ -71,9 +92,9 @@ export default function SearchScreen({ navigation }: any)  {
   const handleTextChange = (text: string) => {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    
+
     debounceRef.current = setTimeout(() => {
-      performSearch(text, activeFilters);
+      performSearch(text, activeFilters, true);
     }, 500);
   };
 
@@ -83,12 +104,20 @@ export default function SearchScreen({ navigation }: any)  {
    */
   const handleFilterApply = (newFilters: FilterResult) => {
     setActiveFilters(newFilters);
-    performSearch(query, newFilters);
+    performSearch(query, newFilters, true);
+  };
+
+  /**
+   * Load more results when reaching end of list
+   */
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore && !loading && isOnline) {
+      performSearch(query, activeFilters, false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      
       {/* Search Header Row */}
       <View style={styles.searchRow}>
         <View style={styles.inputWrapper}>
@@ -102,7 +131,6 @@ export default function SearchScreen({ navigation }: any)  {
             returnKeyType="search"
           />
         </View>
-        
         {/* Filter Button */}
         <TouchableOpacity 
           style={[
@@ -132,7 +160,6 @@ export default function SearchScreen({ navigation }: any)  {
           <ActivityIndicator size="large" color="#06b6d4" />
         </View>
       )}
-      
       {error && (
         <Text style={styles.errorText}>{error}</Text>
       )}
@@ -144,21 +171,25 @@ export default function SearchScreen({ navigation }: any)  {
           keyExtractor={item => item.id?.toString() || Math.random().toString()}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={({ item }) => (
-              <ProductCard 
-              product={{
-                id: item.id?.toString(),
-                name: item.name,
-                price: item.price ? `Rp ${item.price.toLocaleString()}` : '',
-                image: item.image || 'https://via.placeholder.com/150' 
-              }}
+            <ProductCard 
+              product={item}
               onPress={() => navigation.navigate('ProductDetailRoot', { product: item })}
-            /> // Replaced manual rendering with ProductCard
+            />
           )}
           ListEmptyComponent={
             query.length > 0 && !loading ? (
               <Text style={{ textAlign: 'center', marginTop: 20, color: '#888' }}>
                 No products found matching "{query}"
               </Text>
+            ) : null
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 16 }}>
+                <ActivityIndicator size="small" color="#06b6d4" />
+              </View>
             ) : null
           }
         />

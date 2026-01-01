@@ -6,16 +6,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { categoryService } from '../../services/categoryService';
-import { productService } from '../../services/productService';
+import { categoryService, CreateCategoryDto } from '../../services/categoryService';
+import { productService, CreateProductDto } from '../../services/productService';
 import ProductCard from '../../components/ProductCard';
 import Skeleton from '../../components/Skeleton';
 
 const HomeScreen = () => {
   const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [products, setProducts] = useState<CreateProductDto[] | null>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
@@ -28,7 +29,7 @@ const HomeScreen = () => {
 
         // Requirement: Select the first category by default
         if (fetchedCategories && fetchedCategories.length > 0) {
-          handleCategorySelect(fetchedCategories[0].id);
+          handleCategorySelect(fetchedCategories[0]);
         }
       } catch (error) {
         console.error('Error initializing Home Screen:', error);
@@ -39,11 +40,11 @@ const HomeScreen = () => {
     initData();
   }, []);
 
-  const handleCategorySelect = async (id: string) => {
-    setSelectedCategoryId(id);
+  const handleCategorySelect = async (ccd: CreateCategoryDto) => {
+    setSelectedCategoryId(ccd.id);
     setLoadingProducts(true);
     try {
-      const filteredProducts = await productService.getProducts(id);
+      const filteredProducts = await productService.getProducts(ccd.id);
       setProducts(filteredProducts);
     } catch (error) {
       console.error('Error fetching products for category:', error);
@@ -59,7 +60,10 @@ const HomeScreen = () => {
         onPress={() => handleCategorySelect(item.id)}
         style={[styles.categoryItem, isSelected && styles.selectedCategoryItem]}
       >
-        <View style={styles.categoryIconCircle} />
+        <Image 
+        source={{ uri: item.image }} 
+        style={styles.categoryIconCircle} 
+      />
         <Text style={[styles.categoryText, isSelected && styles.selectedCategoryText]}>
           {item.name}
         </Text>
@@ -111,7 +115,9 @@ const HomeScreen = () => {
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <View style={styles.productWrapper}>
-                <ProductCard product={item} />
+                <ProductCard product={item} onPress={function (): void {
+                  // Placeholder for product press handler
+                } } />
               </View>
             )}
             contentContainerStyle={styles.productGrid}

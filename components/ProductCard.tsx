@@ -1,24 +1,18 @@
 import React from 'react';
 import { TouchableOpacity, Image, Text, StyleSheet, ViewStyle, ImageStyle, TextStyle } from 'react-native';
+import { CreateProductDto } from '../services/productService';
 
-// You can move this type to a shared types file if preferred
-export type Product = {
-  id: string;
-  name: string;
-  price: string;
-  image: string;
-};
 
 interface ProductCardProps {
-  product: Product;
+  product: CreateProductDto;
   onPress: () => void;
 }
 
 const ProductCard = ({ product, onPress }: ProductCardProps) => {
   return (
     <TouchableOpacity onPress={onPress} style={styles.container}>
-      <Image source={{ uri: product.image }} style={styles.productImage} />
-      <Text style={styles.name}>{product.name}</Text>
+      <Image source={{ uri: product.images[0] }} style={styles.productImage} />
+      <Text style={styles.name}>{product.title}</Text>
       <Text style={styles.price}>{product.price}</Text>
     </TouchableOpacity>
   );

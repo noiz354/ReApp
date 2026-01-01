@@ -3,6 +3,7 @@ import { getApiClient } from '../api/AbstractApiClient';
 import { cache, CACHE_DURATION_2_DAYS } from '../utils/cache'; // Assuming cache utility exists
 
 export interface CreateCategoryDto {
+  id: number;
   name: string;
   image: string;
 }
@@ -11,7 +12,7 @@ const CATEGORY_CACHE_KEY = 'app_categories';
 const TWO_DAYS_IN_MS = 2 * 24 * 60 * 60 * 1000;
 
 export const categoryService = {
-  getCategories: async () => {
+  getCategories: async (): Promise<CreateCategoryDto[]> => {
     // 1. Try to get valid cache
     const cachedCategories = await cache.get<any[]>(CATEGORY_CACHE_KEY);
     if (cachedCategories) {

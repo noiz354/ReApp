@@ -1,4 +1,5 @@
 import { AbstractApiClient, getApiClient } from "../api/AbstractApiClient";
+import { CreateProductDto } from "./productService";
 
 /**
  * Interface representing the search parameters accepted by the backend /search endpoint.
@@ -26,7 +27,7 @@ export const searchService = {
     categorySlug,
     minLimit,
     maxLimit
-  }: SearchParams) => {
+  }: SearchParams): Promise<CreateProductDto[]> => {
     // Always include 'q' (maps to 'title' on the backend) even if it's an empty string.
     const params: Record<string, any> = { q: query };
 

@@ -1,6 +1,7 @@
 import { getApiClient } from '../api/AbstractApiClient';
 
 export interface CreateProductDto {
+  id: number;
   title: string;
   price: number;
   description: string;
@@ -11,7 +12,7 @@ export interface CreateProductDto {
 export interface UpdateProductDto extends Partial<CreateProductDto> {}
 
 export const productService = {
-  getProducts: async (categoryId?: string) => {
+  getProducts: async (categoryId?: number): Promise<CreateProductDto[] | null> => {
     const client = await getApiClient(1);
     // Assuming the API supports a category filter query param
     const url = categoryId ? `/products?categoryId=${categoryId}` : '/products';
