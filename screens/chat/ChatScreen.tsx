@@ -33,7 +33,7 @@ function ChatScreen({ navigation, route, messages }: ChatScreenProps) {
   // This prevents the "Cannot read property 'chatId' of undefined" crash
   const params = route?.params ?? {}; 
   console.log('Current Route Params:', route?.params);
-  const chatId = params.chatId ?? '0'; 
+  const chatId = params.chatId ?? ''; 
   const chatName = params.chatName ?? 'Official Store';
 
   const [inputText, setInputText] = useState('');
@@ -53,6 +53,7 @@ function ChatScreen({ navigation, route, messages }: ChatScreenProps) {
 
       socket.current.onmessage = async (e) => {
         const data = JSON.parse(e.data);
+        
         
         // Heartbeat for Online Status
         if (data.type === 'request_heartbeat') {
