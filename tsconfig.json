@@ -1,8 +1,24 @@
 {
   "extends": "@react-native/typescript-config",
   "compilerOptions": {
+    /* Required for WatermelonDB Decorators */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
+    /* CRITICAL: React Native 0.83/ESNext defaults this to true. 
+       Must be false for legacy decorators (@field, @text) to work. 
+    */
+    "useDefineForClassFields": false, 
+    
+    /* Helps with '!' definite assignment assertions in Models */
+    "strictPropertyInitialization": false,
+
     "types": ["jest"],
+    "baseUrl": ".",
+    "paths": {
+      "*": ["src/*"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "**/Pods"]
 }

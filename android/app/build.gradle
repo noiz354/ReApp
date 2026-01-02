@@ -57,7 +57,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -72,6 +72,27 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def verMajor = 0
+def verMinor = 0
+def verPatch = 1
+def verClassifier = "draft" // Bisa diubah: "draft", "alpha", "beta", atau "final"
+
+// 2. Fungsi untuk memetakan variant/classifier ke angka (Digit terakhir)
+def getClassifierCode(String classifier) {
+    def mapping = [
+        "draft": 0,
+        "alpha": 1,
+        "beta" : 2,
+        "final": 9
+    ]
+    return mapping.get(classifier, 0) // Default ke 0 jika tidak ditemukan
+}
+
+// 3. Rumus Version Code: (Major * 100000) + (Minor * 1000) + (Patch * 10) + Classifier
+// Contoh 0.0.1[draft] -> (0) + (0) + (10) + 0 = 10
+def generatedVersionCode = (verMajor * 100000) + (verMinor * 1000) + (verPatch * 10) + getClassifierCode(verClassifier)
+def generatedVersionName = "${verMajor}.${verMinor}.${verPatch}[${verClassifier}]"
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -82,8 +103,8 @@ android {
         applicationId "com.imanino.store"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode generatedVersionCode
+        versionName generatedVersionName
     }
     signingConfigs {
         debug {
@@ -113,11 +134,16 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+    }
 }
 
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    implementation project(':watermelondb-jsi')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

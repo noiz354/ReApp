@@ -53,7 +53,10 @@ export default function ProfileScreen({ navigation }: any) {
         <List.Item
           title="Chat Support"
           left={(props) => <List.Icon {...props} icon="chat" />}
-          onPress={() => navigation.navigate('Chat')}
+          onPress={() => navigation.navigate('Chat', { 
+  chatId: 'room_123', 
+  chatName: 'Official Store' 
+})}
         />
         <Divider />
         
